@@ -265,6 +265,8 @@ class Model(nn.Module):
             self.projection = nn.Linear(
                 configs.d_model * configs.seq_len, configs.num_class)
 
+        self.channel_fc = nn.Linear(configs.c_out, 1)
+
     def out_projection(self, dec_out, i, out_res):
         dec_out = self.projection_layer(dec_out)
         out_res = out_res.permute(0, 2, 1)
@@ -382,11 +384,14 @@ class Model(nn.Module):
 
         # Future Multipredictor Mixing as decoder for future
         dec_out_list = self.future_multi_mixing(B, enc_out_list, x_list)
-        # dec_out_list [B,lookback,N]
+        # dec_out_list [B,lookback,N]？  他是把时间步浓缩到只预测一步
         dec_out = torch.stack(dec_out_list, dim=-1).sum(-1)
         # dec_out [B, lookback, N]
         dec_out = self.normalize_layers[0](dec_out, 'denorm')
         # dec_out [B, lookback, N]
+
+        dec_out = self.channel_fc(dec_out).squeeze(-1)
+
         return dec_out
 
     def future_multi_mixing(self, B, enc_out_list, x_list):

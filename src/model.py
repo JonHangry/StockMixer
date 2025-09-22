@@ -21,7 +21,7 @@ def get_loss(prediction, ground_truth, base_price, mask, batch_size, alpha):
     rank_loss = torch.mean(
         F.relu(pre_pw_dif * gt_pw_dif * mask_pw)
     )
-    loss = reg_loss + alpha * rank_loss
+    loss = reg_loss + alpha * rank_loss          # 100%的mse损失和10%的rankloss
     return loss, reg_loss, rank_loss, return_ratio
 
 
@@ -186,14 +186,14 @@ class StockMixer(nn.Module):
         self.time_fc_ = nn.Linear(time_steps * 2 + scale_dim, 1)
 
     def forward(self, inputs):
-        x = inputs.permute(0, 2, 1)
-        x = self.conv(x)
-        x = x.permute(0, 2, 1)
-        y = self.mixer(inputs, x)
-        y = self.channel_fc(y).squeeze(-1)
+        x = inputs.permute(0, 2, 1)     #[1026,16,5]
+        x = self.conv(x)    #[1026,5,8]
+        x = x.permute(0, 2, 1)  #[1026,8,5]
+        y = self.mixer(inputs, x)   #[1026,40,5]
+        y = self.channel_fc(y).squeeze(-1)  #[1026,40]  因为只要预测收盘价一个变量
 
-        z = self.stock_mixer(y)
-        y = self.time_fc(y)
-        z = self.time_fc_(z)
+        z = self.stock_mixer(y) #[1026,40]
+        y = self.time_fc(y)  #[1026,1] 只预测之后一步的值
+        z = self.time_fc_(z) #[1026,1]
         return y + z
-
+        # return y
